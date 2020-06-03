@@ -19,8 +19,18 @@ int main() {
 	server.config.port = 8080;
 	server.io_service = loop;
 
-	server.resource["^/match/([0-9]+)$"]["GET"] = [](shared_ptr<HttpServer::Response> res, shared_ptr<HttpServer::Request> req) {
-		res->write(req->path_match[1].str());
+	server.default_resource["GET"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request> request) {
+		response->write("SAMPLE RESPONSE");
+	};
+
+	// CPU bound operations can be done
+	// on seperate threads to avoid blocking the event bus
+	server.resource["^/heavy-operations$"]["GET"] = [](shared_ptr<HttpServer::Response> response, shared_ptr<HttpServer::Request>) {
+		thread worker_thread([response] {
+			this_thread::sleep_for(chrono::seconds(5));
+			response->write("FINISHED 5 SECONDS OF WORK");
+		});
+		worker_thread.detach();
 	};
 
 	promise<unsigned short> server_port;
